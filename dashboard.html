@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Loan Approval Analysis — Exhibit Report</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  :root{
+    --ink:#0E1B2B;
+    --ink-2:#16283F;
+    --paper:#F6F1E7;
+    --paper-line:#E3DAC5;
+    --gold:#C9A227;
+    --approved:#3E6B4F;
+    --approved-soft:#DCE8DF;
+    --rejected:#9C4A3C;
+    --rejected-soft:#F1DFDA;
+    --ink-text:#1B2733;
+    --muted:#5B6572;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--ink);
+    color:var(--paper);
+    font-family:'Helvetica Neue', Arial, sans-serif;
+    line-height:1.5;
+  }
+  .display{font-family:Georgia,'Times New Roman',serif;}
+  .mono{font-family:'SF Mono','Consolas','Menlo',monospace;}
+
+  .wrap{max-width:1080px;margin:0 auto;padding:64px 28px 100px;}
+
+  /* ---------- Hero ---------- */
+  .hero{
+    display:flex; flex-direction:column; gap:18px;
+    border-bottom:1px solid rgba(246,241,231,0.18);
+    padding-bottom:44px; margin-bottom:56px;
+    position:relative;
+  }
+  .eyebrow{
+    text-transform:uppercase; letter-spacing:0.18em; font-size:12px;
+    color:var(--gold); font-weight:600;
+  }
+  .hero h1{
+    font-size:clamp(34px,5vw,54px); margin:0; font-weight:400;
+    letter-spacing:-0.01em;
+  }
+  .hero p.sub{ color:#C9CFD8; max-width:640px; font-size:16px; margin:0;}
+  .hero-stats{ display:flex; gap:44px; margin-top:22px; flex-wrap:wrap;}
+  .hero-stat .num{ font-size:38px; font-weight:600; }
+  .hero-stat .lbl{ font-size:12px; color:#9AA5B1; text-transform:uppercase; letter-spacing:0.08em;}
+  .hero-stat.approved .num{color:#7FBE96;}
+  .hero-stat.rejected .num{color:#D68C7E;}
+
+  /* ---------- Exhibit blocks ---------- */
+  .exhibit{ margin-bottom:64px; }
+  .exhibit-head{
+    display:flex; align-items:baseline; gap:14px; margin-bottom:6px;
+    border-bottom: 1px solid rgba(246,241,231,0.18); padding-bottom:14px;
+  }
+  .exhibit-tag{
+    font-family:Georgia,serif; font-style:italic; color:var(--gold);
+    font-size:15px; white-space:nowrap;
+  }
+  .exhibit-title{ font-size:24px; font-weight:400; margin:0; }
+  .exhibit-note{ color:#9AA5B1; font-size:14px; max-width:680px; margin:10px 0 24px;}
+
+  .paper-card{
+    background:var(--paper); color:var(--ink-text);
+    border-radius:2px; padding:28px;
+    box-shadow: 0 1px 0 rgba(0,0,0,0.4);
+  }
+
+  .grid-2{ display:grid; grid-template-columns:1.3fr 1fr; gap:24px; }
+  .grid-3{ display:grid; grid-template-columns:repeat(3,1fr); gap:20px; }
+  @media(max-width:800px){ .grid-2,.grid-3{grid-template-columns:1fr;} }
+
+  .finding{
+    background:var(--ink-2); border-left:3px solid var(--gold);
+    padding:16px 20px; font-size:14.5px; color:#DCE1E7; margin-top:16px;
+  }
+  .finding b{ color:var(--paper); }
+
+  /* Cliff gauge - signature element */
+  .cliff{
+    position:relative; height:120px; border-radius:2px;
+    background: linear-gradient(to right,
+      var(--rejected) 0%, var(--rejected) 58.3%,
+      var(--approved) 58.4%, var(--approved) 100%);
+    overflow:hidden;
+  }
+  .cliff .scale{
+    position:absolute; bottom:8px; left:0; right:0;
+    display:flex; justify-content:space-between; padding:0 12px;
+    font-size:11px; color:rgba(255,255,255,0.85); font-family:'SF Mono',monospace;
+  }
+  .cliff .marker{
+    position:absolute; top:0; bottom:0; left:58.3%;
+    width:2px; background:var(--paper);
+  }
+  .cliff .marker .tag{
+    position:absolute; top:10px; left:8px; background:var(--paper); color:var(--ink-text);
+    font-size:11px; padding:3px 7px; font-weight:700; white-space:nowrap;
+    font-family:'SF Mono',monospace;
+  }
+  .cliff .side-label{
+    position:absolute; top:14px; font-size:13px; font-weight:700; color:#fff;
+    text-transform:uppercase; letter-spacing:0.05em;
+  }
+  .cliff .side-label.left{ left:16px; }
+  .cliff .side-label.right{ right:16px; text-align:right; }
+  .cliff .pct{
+    position:absolute; bottom:14px; font-size:26px; font-weight:700; font-family:'SF Mono',monospace;
+  }
+  .cliff .pct.left{ left:16px; color:#fff; }
+  .cliff .pct.right{ right:16px; color:#fff; text-align:right;}
+
+  canvas{ max-width:100%; }
+
+  .stat-row{ display:flex; gap:28px; margin-top:18px; flex-wrap:wrap; }
+  .stat-mini .n{ font-size:22px; font-weight:700; font-family:'SF Mono',monospace; }
+  .stat-mini .l{ font-size:11.5px; color:var(--muted); text-transform:uppercase; letter-spacing:0.05em;}
+
+  table.imp{ width:100%; border-collapse:collapse; font-size:14px; }
+  table.imp td{ padding:7px 4px; border-bottom:1px solid var(--paper-line); }
+  table.imp td.name{ width:46%; }
+  table.imp .bar-bg{ background:#EDE6D6; border-radius:2px; height:10px; position:relative; }
+  table.imp .bar-fill{ background:var(--gold); height:10px; border-radius:2px; }
+  table.imp td.val{ text-align:right; font-family:'SF Mono',monospace; width:56px; }
+
+  footer{
+    border-top:1px solid rgba(246,241,231,0.18); padding-top:28px; margin-top:20px;
+    color:#8B95A3; font-size:13px; display:flex; justify-content:space-between; flex-wrap:wrap; gap:10px;
+  }
+  footer a{ color:var(--gold); text-decoration:none; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="hero">
+    <div class="eyebrow">Credit Underwriting Review — Exhibit Report</div>
+    <h1 class="display">Loan Approval Analysis</h1>
+    <p class="sub">A statistical review of 4,269 loan applications, examining which
+    applicant factors actually drive approval — and which ones, despite conventional
+    wisdom, turn out not to matter at all.</p>
+    <div class="hero-stats">
+      <div class="hero-stat"><div class="num mono">4,269</div><div class="lbl">Applications Reviewed</div></div>
+      <div class="hero-stat approved"><div class="num mono">62.2%</div><div class="lbl">Overall Approval Rate</div></div>
+      <div class="hero-stat"><div class="num mono">97.9%</div><div class="lbl">Model Accuracy Achieved</div></div>
+    </div>
+  </div>
+
+  <!-- EXHIBIT A -->
+  <div class="exhibit">
+    <div class="exhibit-head">
+      <span class="exhibit-tag">Exhibit A</span>
+      <h2 class="exhibit-title">The Credit Cliff</h2>
+    </div>
+    <p class="exhibit-note">CIBIL score does not correlate gently with approval — it acts as
+    a near hard cutoff at 650. Below it, approval is rare. At or above it, rejection is rare.</p>
+
+    <div class="paper-card">
+      <div class="cliff">
+        <span class="side-label left">Below 650</span>
+        <span class="side-label right">650 and above</span>
+        <span class="pct left">10.6%</span>
+        <span class="pct right">≈99%</span>
+        <div class="marker"><span class="tag">650</span></div>
+        <div class="scale">
+          <span>300</span><span>450</span><span>600</span><span>750</span><span>900</span>
+        </div>
+      </div>
+      <div style="margin-top:26px;">
+        <canvas id="cibilHist" height="90"></canvas>
+      </div>
+      <div class="finding">
+        <b>Reading:</b> the histogram above shows applicant counts by CIBIL score, split by
+        outcome. Below score 650, rejections (rust) dominate almost completely. From 650
+        upward, approvals (green) take over just as completely — there is almost no
+        transition zone.
+      </div>
+    </div>
+  </div>
+
+  <!-- EXHIBIT B -->
+  <div class="exhibit">
+    <div class="exhibit-head">
+      <span class="exhibit-tag">Exhibit B</span>
+      <h2 class="exhibit-title">Factors That Don't Move the Needle</h2>
+    </div>
+    <p class="exhibit-note">Three commonly assumed factors in lending — education,
+    self-employment, and number of dependents — show almost no variation in approval rate.</p>
+
+    <div class="grid-3">
+      <div class="paper-card">
+        <div style="font-size:13px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px;">By Education</div>
+        <canvas id="eduChart" height="170"></canvas>
+      </div>
+      <div class="paper-card">
+        <div style="font-size:13px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px;">By Self-Employment</div>
+        <canvas id="selfChart" height="170"></canvas>
+      </div>
+      <div class="paper-card">
+        <div style="font-size:13px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px;">By Dependents</div>
+        <canvas id="depChart" height="170"></canvas>
+      </div>
+    </div>
+    <div class="finding">
+      <b>Reading:</b> approval rates across every group above sit within a few points of the
+      62% overall average. None of these variables separate approved from rejected
+      applicants in any meaningful way.
+    </div>
+  </div>
+
+  <!-- EXHIBIT C -->
+  <div class="exhibit">
+    <div class="exhibit-head">
+      <span class="exhibit-tag">Exhibit C</span>
+      <h2 class="exhibit-title">Loan Term Effect</h2>
+    </div>
+    <p class="exhibit-note">Shorter loan terms show a modest edge in approval rate, though the
+    effect is far smaller than CIBIL score's and noisier across the range.</p>
+    <div class="paper-card">
+      <canvas id="termChart" height="90"></canvas>
+    </div>
+  </div>
+
+  <!-- EXHIBIT D -->
+  <div class="exhibit">
+    <div class="exhibit-head">
+      <span class="exhibit-tag">Exhibit D</span>
+      <h2 class="exhibit-title">Predictive Model Results</h2>
+    </div>
+    <p class="exhibit-note">A Random Forest classifier trained on all applicant features
+    reaches 97.9% accuracy on held-out data — and confirms, independently of the manual
+    analysis above, that CIBIL score is doing almost all of the work.</p>
+
+    <div class="grid-2">
+      <div class="paper-card">
+        <div style="font-size:13px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px;">Model Comparison</div>
+        <canvas id="modelChart" height="200"></canvas>
+        <div class="stat-row">
+          <div class="stat-mini"><div class="n">93.1%</div><div class="l">Logistic F1</div></div>
+          <div class="stat-mini"><div class="n">98.3%</div><div class="l">Random Forest F1</div></div>
+        </div>
+      </div>
+      <div class="paper-card">
+        <div style="font-size:13px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:14px;">Feature Importance</div>
+        <table class="imp" id="impTable"></table>
+      </div>
+    </div>
+  </div>
+
+  <footer>
+    <span>Python · Pandas · scikit-learn · Chart.js — full notebook and source in the repository.</span>
+    <span>Loan Approval Analysis — Portfolio Project</span>
+  </footer>
+</div>
+
+<script>
+const paper = '#F6F1E7';
+const gridColor = 'rgba(27,39,51,0.08)';
+const textColor = '#1B2733';
+Chart.defaults.color = textColor;
+Chart.defaults.font.family = "Helvetica Neue, Arial, sans-serif";
+
+const APPROVED = '#3E6B4F';
+const REJECTED = '#9C4A3C';
+const GOLD = '#C9A227';
+
+// Exhibit A - CIBIL histogram
+new Chart(document.getElementById('cibilHist'), {
+  type: 'bar',
+  data: {
+    labels: ["300-350","350-400","400-450","450-500","500-550","550-600","600-650","650-700","700-750","750-800","800-850","850-900"],
+    datasets: [
+      {label:'Rejected', data:[321,319,297,319,344,2,0,4,1,3,1,2], backgroundColor: REJECTED, stack:'s'},
+      {label:'Approved', data:[43,29,44,34,39,353,333,363,371,359,354,334], backgroundColor: APPROVED, stack:'s'}
+    ]
+  },
+  options: {
+    responsive:true,
+    plugins:{ legend:{ position:'bottom', labels:{boxWidth:12} } },
+    scales:{
+      x:{ stacked:true, grid:{display:false}, title:{display:true,text:'CIBIL Score Range'} },
+      y:{ stacked:true, grid:{color:gridColor}, title:{display:true,text:'Applicants'} }
+    }
+  }
+});
+
+function miniBar(id, labels, data, color){
+  new Chart(document.getElementById(id), {
+    type:'bar',
+    data:{ labels, datasets:[{ data, backgroundColor: color, borderRadius:3 }] },
+    options:{
+      responsive:true,
+      plugins:{ legend:{display:false},
+        tooltip:{callbacks:{label:(c)=> c.formattedValue + '% approved'}} },
+      scales:{
+        x:{ grid:{display:false} },
+        y:{ min:0, max:100, grid:{color:gridColor}, title:{display:true,text:'Approval %'} }
+      }
+    }
+  });
+}
+miniBar('eduChart', ['Graduate','Not Graduate'], [62.5,62.0], ['#00695C','#EF6C00']);
+miniBar('selfChart', ['Self-Employed','Not'], [62.2,62.2], ['#00695C','#EF6C00']);
+miniBar('depChart', ['0','1','2','3','4','5'], [64.2,61.7,62.3,62.9,61.8,60.3], GOLD);
+
+// Exhibit C - loan term
+new Chart(document.getElementById('termChart'), {
+  type:'line',
+  data:{
+    labels:['2','4','6','8','10','12','14','16','18','20'],
+    datasets:[{
+      label:'Approval Rate (%)',
+      data:[78.0,81.9,57.6,57.0,52.5,60.5,59.0,57.3,60.9,57.4],
+      borderColor:'#4527A0', backgroundColor:'rgba(69,39,160,0.12)',
+      fill:true, tension:0.3, pointRadius:4, pointBackgroundColor:'#4527A0'
+    }]
+  },
+  options:{
+    responsive:true,
+    plugins:{legend:{display:false}},
+    scales:{
+      x:{ title:{display:true,text:'Loan Term (years)'}, grid:{display:false} },
+      y:{ min:0,max:100, title:{display:true,text:'Approval Rate (%)'}, grid:{color:gridColor} }
+    }
+  }
+});
+
+// Exhibit D - model comparison
+new Chart(document.getElementById('modelChart'), {
+  type:'bar',
+  data:{
+    labels:['Accuracy','Precision','Recall','F1-score'],
+    datasets:[
+      {label:'Logistic Regression', data:[91.3,92.1,94.2,93.1], backgroundColor:'#90A4C4'},
+      {label:'Random Forest', data:[97.9,97.9,98.7,98.3], backgroundColor: GOLD}
+    ]
+  },
+  options:{
+    responsive:true,
+    plugins:{ legend:{position:'bottom', labels:{boxWidth:12}} },
+    scales:{
+      y:{min:0,max:100, grid:{color:gridColor}, title:{display:true,text:'Score (%)'}},
+      x:{grid:{display:false}}
+    }
+  }
+});
+
+// Exhibit D - feature importance table
+const importances = [
+  ["CIBIL score",84.89],["Loan term",6.25],["Loan amount",2.25],
+  ["Luxury assets",1.28],["Annual income",1.21],["Commercial assets",1.18],
+  ["Residential assets",1.17],["Bank assets",1.00],["Dependents",0.52],
+  ["Education",0.13],["Self-employed",0.13]
+];
+const tbl = document.getElementById('impTable');
+importances.forEach(([name,val])=>{
+  const row = document.createElement('tr');
+  row.innerHTML = `
+    <td class="name">${name}</td>
+    <td><div class="bar-bg"><div class="bar-fill" style="width:${Math.max(val,1.5)}%"></div></div></td>
+    <td class="val">${val}%</td>`;
+  tbl.appendChild(row);
+});
+</script>
+</body>
+</html>
