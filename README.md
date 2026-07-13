@@ -10,6 +10,10 @@ engineering, and baseline machine learning classification.
 ![scikit--learn](https://img.shields.io/badge/scikit--learn-ML-F7931E)
 ![License](https://img.shields.io/badge/License-MIT-green)
 
+## Live Dashboard
+
+**[View the interactive dashboard →](https://mayar846.github.io/loan-approval-analysis/dashboard.html)**
+
 ## Project Overview
 
 Financial institutions need to understand which applicant factors most
@@ -37,6 +41,7 @@ a loan approval dataset to answer:
 ```
 loan-approval-analysis/
 ├── loan_approval_analysis.ipynb   # Full analysis notebook (runs end-to-end)
+├── dashboard.html                  # Interactive one-page visual dashboard
 ├── generate_analysis.py            # Standalone EDA + chart generation script
 ├── model.py                        # Standalone modeling script
 ├── README.md
@@ -45,6 +50,12 @@ loan-approval-analysis/
 │   └── loan_approval_cleaned.csv   # Cleaned + feature-engineered dataset
 └── images/                         # All exported chart PNGs (14 charts)
 ```
+
+## Interactive Dashboard
+
+`dashboard.html` is a standalone, self-contained interactive dashboard
+summarizing the key findings — open it directly in any browser, or view
+the live version hosted via GitHub Pages (link above).
 
 ## Dataset
 
