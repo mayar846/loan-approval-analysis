@@ -124,8 +124,3 @@ Python · Pandas · NumPy · Matplotlib · Seaborn · scikit-learn · Jupyter
 
 Data Analyst — available for freelance data analysis, EDA, dashboards,
 and machine learning projects.
-
----
-*This project was built for portfolio and freelance-platform purposes,
-demonstrating a full analysis workflow from raw data to a validated
-predictive model.*
